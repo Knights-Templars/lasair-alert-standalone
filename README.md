@@ -13,7 +13,7 @@ This is an LSST alert web application designed to fetch LSST alerts and do some 
 _Note : This is intended to be working with a TOM_
 
 ### Usage
-Make a conga env with lasair, sklearn, matplotlib, numpy, django, pandas installed
+Make a conda env with lasair, sklearn, matplotlib, numpy, django, pandas installed
 ```
 conda activate lasair_env
 python manage.py update_alerts
