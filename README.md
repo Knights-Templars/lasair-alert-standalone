@@ -1,7 +1,7 @@
 ## Welcome to FLARE - 
 
 <p align="center">
-  <img src="FLARE.png" width="120"/>
+  <img src="FLARE.png" width="500"/>
 </p>
 
 <p align="center">
