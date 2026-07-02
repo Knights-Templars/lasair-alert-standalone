@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lasair LSST — Alert Stream</title>
+
+  <!-- Google Fonts: Space Mono for monospace data feel, Syne for headings -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* -----------------------------------------------------------------------
+       CSS custom properties — change these to retheme the whole page
+    ----------------------------------------------------------------------- */
+    :root {
+      --bg:         #05070f;       /* deep space background              */
+      --surface:    #0d1120;       /* card / table background            */
+      --border:     #1e2a45;       /* subtle grid lines                  */
+      --accent:     #3b82f6;       /* blue — links & highlights          */
+      --accent2:    #f59e0b;       /* amber — magnitude badge            */
+      --text:       #c8d6f0;       /* primary text                       */
+      --text-dim:   #5a6d8a;       /* secondary / dimmed text            */
+      --danger:     #ef4444;       /* error states                       */
+      --success:    #22d3ee;       /* 'SN' classification badge          */
+      --row-hover:  #111827;       /* table row hover                    */
+      --font-data:  'Space Mono', monospace;
+      --font-head:  'Syne', sans-serif;
+    }
+
+    /* -----------------------------------------------------------------------
+       Base reset & body
+    ----------------------------------------------------------------------- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-data);
+      font-size: 13px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Subtle starfield texture via radial gradient noise */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.15) 0%, transparent 100%),
+        radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,.10) 0%, transparent 100%),
+        radial-gradient(1px 1px at 75% 35%, rgba(255,255,255,.12) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,.08) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* -----------------------------------------------------------------------
+       Layout wrapper
+    ----------------------------------------------------------------------- */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Header
+    ----------------------------------------------------------------------- */
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+    }
+
+    header h1 {
+      font-family: var(--font-head);
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+
+    header h1 span { color: var(--accent); }
+
+    .header-meta {
+      margin-left: auto;
+      text-align: right;
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    .header-meta strong {
+      display: block;
+      font-size: 1.4rem;
+      font-family: var(--font-head);
+      color: var(--accent2);
+    }
+
+    /* -----------------------------------------------------------------------
+       Error banner
+    ----------------------------------------------------------------------- */
+    .error-banner {
+      background: rgba(239,68,68,.12);
+      border: 1px solid var(--danger);
+      border-left: 4px solid var(--danger);
+      color: #fca5a5;
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Table wrapper — horizontal scroll on small screens
+    ----------------------------------------------------------------------- */
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    /* -----------------------------------------------------------------------
+       Data table
+    ----------------------------------------------------------------------- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      white-space: nowrap;       /* keep monospace columns from wrapping */
+    }
+
+    /* Column header row */
+    thead tr {
+      background: var(--surface);
+      border-bottom: 2px solid var(--accent);
+    }
+
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-family: var(--font-head);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    /* Alternating row shading for readability */
+    tbody tr:nth-child(even) { background: rgba(255,255,255,.02); }
+    tbody tr:hover            { background: var(--row-hover); }
+
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    /* Object ID link — the primary clickable element */
+    .obj-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+      letter-spacing: .02em;
+      transition: color .15s;
+    }
+    .obj-link:hover {
+      color: #93c5fd;
+      text-decoration: underline;
+    }
+
+    /* Magnitude displayed with amber badge */
+    .mag-badge {
+      background: rgba(245,158,11,.15);
+      color: var(--accent2);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    /* Sherlock classification badge */
+    .class-badge {
+      background: rgba(34,211,238,.12);
+      color: var(--success);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    /* Coordinate values — slightly dim */
+    .coord { color: #94a3b8; }
+
+    /* Flux values — smaller and dim */
+    .flux { color: var(--text-dim); font-size: 11px; }
+
+    /* Dates in ISO format */
+    .date { color: #7dd3fc; font-size: 12px; }
+
+    /* -----------------------------------------------------------------------
+       Pagination controls
+    ----------------------------------------------------------------------- */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-top: 2rem;
+    }
+
+    /* Each page number or arrow is a styled anchor */
+    .page-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      height: 36px;
+      padding: 0 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      text-decoration: none;
+      font-family: var(--font-data);
+      font-size: 13px;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .page-link:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* The current page is highlighted differently */
+    .page-link.current {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      pointer-events: none;   /* not clickable — already on this page */
+    }
+
+    /* Disabled previous/next arrows */
+    .page-link.disabled {
+      opacity: .35;
+      pointer-events: none;
+    }
+
+    /* -----------------------------------------------------------------------
+       Page info line (e.g. "Showing 1–50 of 132 objects")
+    ----------------------------------------------------------------------- */
+    .page-info {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 12px;
+      margin-top: .75rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Empty state
+    ----------------------------------------------------------------------- */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-dim);
+    }
+    .empty-state p { font-size: 1.1rem; }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- ================================================================
+       Page header
+  ================================================================ -->
+  <header>
+    <h1>Lasair <span>LSST</span> — Alert Stream</h1>
+
+    <div class="header-meta">
+      {% if total_count %}
+        <strong>{{ total_count }}</strong>
+        supernova candidate{{ total_count|pluralize }} returned
+      {% endif %}
+      <br>Rubin / LSST live feed &nbsp;·&nbsp; SN candidates &nbsp;·&nbsp; dec &gt; −25°
+    </div>
+  </header>
+
+  <!-- ================================================================
+       Error banner (shown only when something went wrong)
+  ================================================================ -->
+  {% if error_message %}
+    <div class="error-banner">
+      <strong>⚠ Query failed:</strong> {{ error_message }}
+    </div>
+  {% endif %}
+
+  <!-- ================================================================
+       Results table
+  ================================================================ -->
+  {% if page_obj.object_list %}
+    {% load static %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>                     <!-- row number on this page -->
+            <th>Object ID</th>
+            <th>RA (°)</th>
+            <th>Dec (°)</th>
+            <th>Latest Mag</th>
+            <th>First Seen </th>
+            <th>Last Seen </th>
+            <th>r flux</th>
+            <th>g flux</th>
+            <th>i flux</th>
+            <th>z flux</th>
+            <th>u flux</th>
+            <th>DateTime now (UTC)</th>
+            <th>Classification</th>
+            <th> Light Curve</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for obj in page_obj.object_list %}
+            {# Row counter: offset by items already shown on previous pages #}
+            {% with row_num=forloop.counter0|add:page_obj.start_index %}
+            <tr>
+              <!-- Sequential row number across all pages -->
+              <td class="coord">{{ row_num }}</td>
+
+              <!-- Object ID — links to the Lasair portal detail page -->
+              <td>
+                <a class="obj-link"
+                   href="{{ obj.lasair_url }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   title="Open {{ obj.diaObjectId }} on Lasair">
+                  {{ obj.diaObjectId }}
+                </a>
+              </td>
+              
+              <!-- Sky coordinates, rounded to 5 decimal places -->
+              <td class="coord">{{ obj.ra|floatformat:5 }}</td>
+              <td class="coord">{{ obj.decl|floatformat:5 }}</td>
+
+              <!-- Latest AB magnitude computed from PSF flux -->
+              <td>
+                {% if obj.latestMag %}
+                  <span class="mag-badge">{{ obj.latestMag }}</span>
+                {% else %}
+                  <span class="flux">—</span>
+                {% endif %}
+              </td>
+              
+              <!-- Dates converted from MJD to ISO UTC strings in the view -->
+              <td class="date">{{ obj.firstDiaSourceMjdTai_iso }}</td>
+              <td class="date">{{ obj.lastDiaSourceMjdTai_iso }}</td>
+
+              <!-- Per-band PSF fluxes (nJy); show '—' when null -->
+              <td class="flux">{{ obj.r_psfFlux|default:"—"|floatformat:1 }}</td>
+              <td class="flux">{{ obj.g_psfFlux|default:"—"|floatformat:1 }}</td>
+              <td class="flux">{{ obj.i_psfFlux|default:"—"|floatformat:1 }}</td>
+              <td class="flux">{{ obj.z_psfFlux|default:"—"|floatformat:1 }}</td>
+              <td class="flux">{{ obj.u_psfFlux|default:"—"|floatformat:1 }}</td>
+              {% load tz %}
+              <td class="date">{{ updated|localtime }}</td>
+
+              <!-- Sherlock predicted classification -->
+              <td>
+                <span class="class-badge">
+                  {{ obj.predicted_classification|default:"—" }}
+                </span>
+              </td>
+
+              <td>
+                <a href="{% url 'alerts:lightcurve' obj.diaObjectId %}" title="Fetch light curve">
+                    <img src="{% static 'alerts/icons/lightcurve.png' %}" width="20">
+                </a>
+              </td>
+            </tr>
+            {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div><!-- .table-wrapper -->
+
+    <!-- ==============================================================
+         Pagination controls
+    ============================================================== -->
+    {% if page_obj.paginator.num_pages > 1 %}
+      <nav class="pagination" aria-label="Page navigation">
+
+        <!-- ← Previous page arrow -->
+        {% if page_obj.has_previous %}
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">←</a>
+        {% else %}
+          <span class="page-link disabled" aria-disabled="true">←</span>
+        {% endif %}
+
+        <!-- Page number links — show a sliding window around the current page -->
+        {% for page_num in page_obj.paginator.page_range %}
+          {% if page_num == page_obj.number %}
+            <!-- Current page: highlighted, not a link -->
+            <span class="page-link current" aria-current="page">{{ page_num }}</span>
+
+          {% elif page_num == 1 or page_num == page_obj.paginator.num_pages %}
+            <!-- Always show first and last page numbers -->
+            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+
+          {% elif page_num >= page_obj.number|add:"-2" and page_num <= page_obj.number|add:"2" %}
+            <!-- Show 2 neighbours on each side of the current page -->
+            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+
+          {% elif page_num == page_obj.number|add:"-3" or page_num == page_obj.number|add:"3" %}
+            <!-- Show '…' ellipsis one step outside the window -->
+            <span class="page-link disabled">…</span>
+          {% endif %}
+        {% endfor %}
+
+        <!-- → Next page arrow -->
+        {% if page_obj.has_next %}
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">→</a>
+        {% else %}
+          <span class="page-link disabled" aria-disabled="true">→</span>
+        {% endif %}
+
+      </nav><!-- .pagination -->
+
+      <!-- Text summary: "Showing 1–50 of 132 objects · Page 1 of 3" -->
+      <p class="page-info">
+        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }}
+        of {{ total_count }} object{{ total_count|pluralize }}
+        &nbsp;·&nbsp;
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </p>
+    {% endif %}
+
+  {% elif not error_message %}
+    <!-- No results and no error means the query returned zero matches -->
+    <div class="empty-state">
+      <p>No supernova candidates found matching the current filter criteria.</p>
+    </div>
+  {% endif %}
+
+
+</div><!-- .container -->
+</body>
+</html>

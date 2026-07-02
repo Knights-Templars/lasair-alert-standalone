@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <title>{{ object_id }} — Object View</title>
+
+  <style>
+
+    body {
+      background: #05070f;
+      color: #c8d6f0;
+      font-family: monospace;
+      padding: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    .card {
+      background: #0d1120;
+      padding: 1rem;
+      border: 1px solid #1e2a45;
+      border-radius: 8px;
+    }
+
+    h1 {
+      color: white;
+    }
+
+    .label {
+      color: #5a6d8a;
+      font-size: 20px;
+    }
+
+    .value {
+      margin-bottom: 10px;
+    }
+
+    .gp-card {
+       border: 1px solid #48cae4;
+       background: rgba(239, 68, 68, 0.05);
+       box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+       font-size: 16px;   /* 🔥 bigger base font */
+       line-height: 1.6;
+       padding: 20px;
+    }
+
+    .gp-card h3 {
+       color: #48cae4;
+    }
+
+        /* band tags */
+    .band-box {
+        display: inline-block;
+        padding: 4px 10px;
+        margin: 3px;
+        border-radius: 4px;
+        border: 1px solid #1e2a45;
+        cursor: pointer;
+        font-family: monospace;
+        }
+
+    /* band colors */
+    .band-box.u { color: #0077b6; }
+    .band-box.g { color: #90be6d; }
+    .band-box.r { color: #d62828; }
+    .band-box.i { color: #6f1d1b; }
+    .band-box.z { color: #cdb4db; }
+
+    .gp-btn {
+    background: #48cae4;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    }
+
+
+    .gp-btn:hover {
+    background: #48cae4;
+    }
+
+    .green-btn {
+    background: #22c55e;        /* nice science-green */
+    color: #05070f;             /* dark text for contrast */
+    border: 1px solid #16a34a;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    }
+
+    .green-btn:hover {
+    background: #16a34a;
+    border-color: #15803d;
+    transform: translateY(-1px);
+    }
+
+    .top-bar {
+    display: flex;
+    justify-content: flex-end;  /* pushes to right */
+    align-items: center;
+    padding: 10px 0;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<h1>{{ obj.tns_name }} ({{ obj.type }})</h1>
+
+<div class="grid">
+
+  <!-- ================= OBJECT INFO ================= -->
+  <div class="card">
+
+    <h3>Object Properties</h3>
+
+    <div class="value"><span class="label">RA:</span> {{ obj.ra }}</div>
+    <div class="value"><span class="label">Dec:</span> {{ obj.decl }}</div>
+    <div class="value"><span class="label">Redshift:</span> {{ obj.z }}</div>
+    <div class="value"><span class="label">Discovery Mag:</span> {{ obj.disc_mag }}</div>
+    <div class="value"><span class="label">Discovery Date:</span> {{ obj.disc_date }}</div>
+
+  </div>
+
+  <!-- ================= LIGHT CURVE ================= -->
+  <div class="card">
+
+    <h3>Light Curve </h3>
+
+    {{ raw_div|safe }}
+
+  </div>
+
+</div>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.9.0.min.js"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.9.0.min.js"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-tables-3.9.0.min.js"></script>
+
+{{ raw_script|safe }}
+
+<!-- ================= GP CONTROL PANEL ================= -->
+<div class="card gp-card">
+
+  <h3>Light Curve Tools</h3>
+
+  <form method="GET">
+
+    <!-- preserve object -->
+    <input type="hidden" name="object_id" value="{{ obj.diaObjectId }}">
+
+    <!-- ================= GP ================= -->
+    <div class="tool-section">
+
+      <label>
+        <input type="checkbox" name="gp" value="1" checked
+        {% if use_gp %}checked{% endif %}>
+        Enable Gaussian Process Fit
+      </label>
+
+    </div>
+
+    <!-- ================= SNOOPY ================= -->
+    <div class="tool-section">
+
+      <label>
+        <input type="checkbox" name="snoopy" value="1">
+        Enable Snoopy Fit
+      </label>
+
+    </div>
+
+    <!-- ================= SNCOSMO ================= -->
+    <div class="tool-section">
+
+      <label>
+        <input type="checkbox" name="sncosmo" value="1">
+        Enable sncosmo Fit
+      </label>
+
+    </div>
+
+    <hr>
+
+    <!-- ================= BAND SELECTION ================= -->
+    <!-- ================= BAND SELECTION ================= -->
+   <div class="tool-section">
+
+    <span class="label">Bands</span><br><br>
+
+    <label class="band-box u">
+        <input type="checkbox" name="band" value="u"
+        {% if "u" in selected_bands %}checked{% endif %}>
+        u
+    </label>
+
+    <label class="band-box g">
+        <input type="checkbox" name="band" value="g"
+        {% if "g" in selected_bands %}checked{% endif %}>
+        g
+    </label>
+
+    <label class="band-box r">
+        <input type="checkbox" name="band" value="r"
+        {% if "r" in selected_bands %}checked{% endif %}>
+        r
+    </label>
+
+    <label class="band-box i">
+        <input type="checkbox" name="band" value="i"
+        {% if "i" in selected_bands %}checked{% endif %}>
+        i
+    </label>
+
+    <label class="band-box z">
+        <input type="checkbox" name="band" value="z"
+        {% if "z" in selected_bands %}checked{% endif %}>
+        z
+    </label>
+
+    </div>
+
+    <br>
+
+    <button type="submit" class="gp-btn">
+      Run Analysis
+    </button>
+
+    <button type="submit" 
+            class="gp-btn"
+            name="clear",
+            value="1"
+            >
+        Remove Analysis
+    </button>
+
+  </form>
+
+</div>
+
+{% if gp_div %}
+
+<div class="card gp-result-card">
+
+  <h3>Gaussian Process Fit</h3>
+
+  {{ gp_div|safe }}
+
+</div>
+
+{{ gp_script|safe }}
+
+{% endif %}
+
+<div class="top-bar">
+<a href="{% url 'alerts:list' %}?page={{ request.GET.from_page }}" class="green-btn">
+  ← Back To Alert Stream
+</a>
+</div>
+
+</body>
+
+</html>
